@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Piano Accompaniment + Drums</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #eaeaea;
+    min-height: 100vh;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 300;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+    color: #8ab4f8;
+  }
+  .panel {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 16px;
+    width: 100%;
+    max-width: 900px;
+    backdrop-filter: blur(10px);
+  }
+  .panel h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #7f8ea3;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: center;
+  }
+  label {
+    font-size: 13px;
+    color: #b0b8c4;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  select, input[type="range"] {
+    accent-color: #8ab4f8;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #eaeaea;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+  }
+  input[type="range"] { padding: 0; width: 130px; }
+  .val {
+    font-size: 12px;
+    color: #8ab4f8;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .chord-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 600px) {
+    .chord-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .chord-btn {
+    background: linear-gradient(180deg, #2c3e60 0%, #1e2a47 100%);
+    border: 1px solid rgba(138,180,248,0.3);
+    color: #eaeaea;
+    padding: 18px 10px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .chord-btn:hover {
+    background: linear-gradient(180deg, #3b5290 0%, #2a3a66 100%);
+    border-color: #8ab4f8;
+  }
+  .chord-btn:active, .chord-btn.active {
+    transform: scale(0.96);
+    background: linear-gradient(180deg, #8ab4f8 0%, #5a86d4 100%);
+    color: #0d1220;
+    box-shadow: 0 0 20px rgba(138,180,248,0.6);
+  }
+  .chord-btn .deg {
+    display: block;
+    font-size: 10px;
+    opacity: 0.6;
+    font-weight: 400;
+    margin-top: 3px;
+  }
+  .chord-btn .bass-note {
+    display: block;
+    font-size: 10px;
+    opacity: 0.75;
+    font-weight: 400;
+    margin-top: 2px;
+    color: #ffc107;
+  }
+  .chord-btn.active .bass-note,
+  .chord-btn.active .deg { color: rgba(13,18,32,0.7); opacity: 1; }
+
+  .transport {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .transport button, .gen-btn {
+    background: rgba(138,180,248,0.15);
+    border: 1px solid rgba(138,180,248,0.4);
+    color: #8ab4f8;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .transport button:hover, .gen-btn:hover { background: rgba(138,180,248,0.25); }
+  .transport button.playing {
+    background: #8ab4f8;
+    color: #0d1220;
+  }
+  .key-hint {
+    font-size: 11px;
+    color: #6b7a8f;
+    margin-top: 8px;
+  }
+
+  .pattern-vis {
+    display: flex;
+    gap: 4px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .beat-dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: #6b7a8f;
+    transition: all 0.1s;
+  }
+  .beat-dot.bass { background: rgba(255,193,7,0.25); border-color: #ffc107; color: #ffc107; }
+  .beat-dot.chord { background: rgba(138,180,248,0.25); border-color: #8ab4f8; color: #8ab4f8; }
+  .beat-dot.bass.chord { background: linear-gradient(135deg, #ffc107, #8ab4f8); color: #000; }
+  .beat-dot.playing {
+    transform: scale(1.15);
+    box-shadow: 0 0 12px currentColor;
+  }
+
+  .drum-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: #7f8ea3;
+  }
+  .drum-legend span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .drum-legend .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #8ab4f8;
+  }
+</style>
+</head>
+<body>
+
+<h1>🎹 PIANO ACCOMPANIMENT PLAYER</h1>
+
+<!-- === НАСТРОЙКИ === -->
+<div class="panel">
+  <h2>Настройки</h2>
+  <div class="controls-row">
+    <label>Тональность
+      <select id="keySelect">
+        <option>C</option><option>G</option><option>D</option>
+        <option>A</option><option>E</option><option>F</option>
+        <option>Bb</option><option>Eb</option><option>Am</option>
+        <option>Em</option><option>Dm</option>
+      </select>
+    </label>
+    <label>Тип аккордов
+      <select id="chordTypeSelect">
+        <option value="triad" selected>Трезвучия</option>
+        <option value="seventh">Септаккорды</option>
+      </select>
+    </label>
+    <label>Бас
+      <select id="bassModeSelect">
+        <option value="root" selected>Тоника</option>
+        <option value="inversion">Инверсии (плавный)</option>
+        <option value="walking">Walking bass</option>
+      </select>
+    </label>
+    <label>Ритм аккомпанемента
+      <select id="rhythmSelect">
+        <option value="waltz">Вальс (Тум-па-па)</option>
+        <option value="waltzFast">Вальс быстрый</option>
+        <option value="pop" selected>Поп (Тум-па-па-па)</option>
+        <option value="ballad">Баллада (Тум... па-па)</option>
+        <option value="arpeggio">Арпеджио</option>
+        <option value="march">Марш (Тум-па Тум-па)</option>
+        <option value="bossa">Боссанова</option>
+        <option value="rock">Рок (восьмые)</option>
+      </select>
+    </label>
+  </div>
+  <div class="controls-row" style="margin-top:14px">
+    <label>Темп (BPM): <span class="val" id="bpmVal">100</span>
+      <input type="range" id="bpm" min="50" max="200" value="100">
+    </label>
+    <label>Фортепиано: <span class="val" id="pianoVolVal">70%</span>
+      <input type="range" id="pianoVol" min="0" max="100" value="70">
+    </label>
+    <label>Барабаны: <span class="val" id="drumVolVal">60%</span>
+      <input type="range" id="drumVol" min="0" max="100" value="60">
+    </label>
+    <label>Барабаны
+      <select id="drumsMode">
+        <option value="auto" selected>Авто (под ритм)</option>
+        <option value="basic">Только кик+снейр</option>
+        <option value="off">Выкл</option>
+      </select>
+    </label>
+  </div>
+  <div class="pattern-vis" id="patternVis"></div>
+</div>
+
+<!-- === АККОРДЫ === -->
+<div class="panel">
+  <h2>Аккорды тональности <span id="currentKeyLabel">C</span></h2>
+  <div class="chord-grid" id="chordGrid"></div>
+  <div class="key-hint">Клик — проиграть аккорд целиком. Клавиши 1–7 — быстрый доступ. При клике аккорд пишется в текущий слот прогрессии.</div>
+</div>
+
+<!-- === ГЕНЕРАТОР ПРОГРЕССИЙ === -->
+<div class="panel">
+  <h2>Генератор прогрессий</h2>
+  <div class="controls-row">
+    <label>Стиль
+      <select id="genreSelect">
+        <option value="pop">Поп</option>
+        <option value="jazz">Джаз</option>
+        <option value="blues">Блюз</option>
+        <option value="ballad">Баллада</option>
+        <option value="rock">Рок</option>
+        <option value="folk">Народная</option>
+      </select>
+    </label>
+    <button id="genBtn" class="gen-btn">🎲 Сгенерировать</button>
+    <span class="key-hint" style="margin:0">Прогрессия заполнится автоматически</span>
+  </div>
+</div>
+
+<!-- === СЕКВЕНСОР === -->
+<div class="panel">
+  <h2>Секвенсор</h2>
+  <div class="transport">
+    <button id="playBtn">▶ PLAY</button>
+    <button id="stopBtn">■ STOP</button>
+    <button id="clearProg">Очистить прогрессию</button>
+    <span class="key-hint">Пробел — старт/стоп</span>
+  </div>
+  <div id="progression" style="display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin-top:14px;"></div>
+  <div class="key-hint">
+    Клик по аккорду — записать в текущий слот. Клик по слоту — очистить.
+  </div>
+</div>
+
+<script>
+// ============================================================
+// AUDIO
+// ============================================================
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+const pianoGain = ctx.createGain();
+pianoGain.gain.value = 0.7;
+pianoGain.connect(ctx.destination);
+
+function makeReverbIR(duration=1.5, decay=3) {
+  const rate = ctx.sampleRate;
+  const length = rate * duration;
+  const impulse = ctx.createBuffer(2, length, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = impulse.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+    }
+  }
+  return impulse;
+}
+const reverb = ctx.createConvolver();
+reverb.buffer = makeReverbIR(1.5, 3);
+const reverbGain = ctx.createGain();
+reverbGain.gain.value = 0.18;
+pianoGain.connect(reverb);
+reverb.connect(reverbGain);
+reverbGain.connect(ctx.destination);
+
+const drumGain = ctx.createGain();
+drumGain.gain.value = 0.6;
+drumGain.connect(ctx.destination);
+
+// ============================================================
+// МУЗЫКАЛЬНАЯ ЛОГИКА
+// ============================================================
+const NOTE_OFFSETS = { C:0, G:7, D:2, A:9, E:4, F:5, Bb:10, Eb:3 };
+
+const MAJOR_DEGREES = [
+  { name:'I',   root:0,  type:'maj' },
+  { name:'ii',  root:2,  type:'min' },
+  { name:'iii', root:4,  type:'min' },
+  { name:'IV',  root:5,  type:'maj' },
+  { name:'V',   root:7,  type:'maj' },
+  { name:'vi',  root:9,  type:'min' },
+  { name:'vii°',root:11, type:'dim' },
+];
+const MINOR_DEGREES = [
+  { name:'i',    root:0,  type:'min' },
+  { name:'ii°',  root:2,  type:'dim' },
+  { name:'III',  root:3,  type:'maj' },
+  { name:'iv',   root:5,  type:'min' },
+  { name:'v',    root:7,  type:'min' },
+  { name:'VI',   root:8,  type:'maj' },
+  { name:'VII',  root:10, type:'maj' },
+];
+
+const SHARP_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const FLAT_NAMES  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const FLAT_KEYS = ['F','Bb','Eb','Am','Dm'];
+
+function midiToNoteName(midi, preferFlat=false) {
+  const idx = ((midi % 12) + 12) % 12;
+  const octave = Math.floor(midi / 12) - 1;
+  return (preferFlat ? FLAT_NAMES : SHARP_NAMES)[idx] + octave;
+}
+
+function getChordIntervals(type) {
+  return {
+    maj: [0, 4, 7],
+    min: [0, 3, 7],
+    dim: [0, 3, 6],
+    maj7: [0, 4, 7, 11],
+    min7: [0, 3, 7, 10],
+    dom7: [0, 4, 7, 10],
+    m7b5: [0, 3, 6, 10],
+  }[type];
+}
+
+function toSeventh(type, degreeRoot) {
+  if (degreeRoot === 7) return 'dom7';
+  return { maj: 'maj7', min: 'min7', dim: 'm7b5' }[type];
+}
+
+function chordSuffix(type) {
+  return {
+    maj: '', min: 'm', dim: '°',
+    maj7: 'maj7', min7: 'm7', dom7: '7', m7b5: 'm7♭5',
+  }[type];
+}
+
+// ============================================================
+// СОСТОЯНИЕ
+// ============================================================
+let currentKey = 'C';
+let chordTypeMode = 'triad';
+let bassMode = 'root';
+let chords = [];
+let bpm = 100;
+let isPlaying = false;
+let nextNoteTime = 0;
+let schedulerTimer = null;
+const LOOKAHEAD = 25;
+const SCHEDULE_AHEAD = 0.1;
+
+let progression = [0, 5, 3, 4, null, null, null, null];
+let currentProgressionSlot = 0;
+let currentBarCounter = 0;
+let stepInBarCounter = 0;
+
+// ============================================================
+// ПОСТРОЕНИЕ АККОРДОВ
+// ============================================================
+function buildChordsForKey(key) {
+  const isMinor = key.endsWith('m');
+  const baseKey = isMinor ? key.slice(0, -1) : key;
+  const tonicMidi = 48 + NOTE_OFFSETS[baseKey];
+  const degrees = isMinor ? MINOR_DEGREES : MAJOR_DEGREES;
+  const preferFlat = FLAT_KEYS.includes(key);
+
+  return degrees.map(deg => {
+    let type = deg.type;
+    if (chordTypeMode === 'seventh') {
+      type = toSeventh(deg.type, deg.root);
+    }
+    const chordRootMidi = tonicMidi + deg.root;
+    const intervals = getChordIntervals(type);
+
+    const chordVoicing = intervals.map((i, k) => {
+      if (k === 0) return chordRootMidi + 12;
+      return chordRootMidi + i;
+    });
+
+    const rootName = midiToNoteName(chordRootMidi, preferFlat).replace(/\d+$/, '');
+    const suffix = chordSuffix(type);
+
+    return {
+      label: rootName + suffix,
+      degree: deg.name,
+      intervals,
+      bassRoot: chordRootMidi,
+      bass: [chordRootMidi],
+      chord: chordVoicing,
+      bassLabel: rootName,
+      preferFlat,
+    };
+  });
+}
+
+function applyBassMode() {
+  if (bassMode === 'root' || bassMode === 'walking') {
+    chords.forEach(c => {
+      c.bass = [c.bassRoot];
+      c.bassLabel = midiToNoteName(c.bassRoot, c.preferFlat).replace(/\d+$/, '');
+    });
+  } else if (bassMode === 'inversion') {
+    let prevBass = chords[0].bassRoot;
+    chords.forEach(c => {
+      const candidates = c.intervals.map(interval => {
+        let bass = c.bassRoot + interval;
+        while (bass > 47) bass -= 12;
+        while (bass < 36) bass += 12;
+        return bass;
+      });
+      let best = candidates[0];
+      let bestDist = Math.abs(candidates[0] - prevBass);
+      for (const cand of candidates) {
+        const dist = Math.abs(cand - prevBass);
+        if (dist < bestDist) { best = cand; bestDist = dist; }
+      }
+      c.bass = [best];
+      c.bassLabel = midiToNoteName(best, c.preferFlat).replace(/\d+$/, '');
+      prevBass = best;
+    });
+  }
+}
+
+// ============================================================
+// ФОРТЕПИАНО
+// ============================================================
+function playPianoNote(midi, when, duration, velocity=1, isBass=false) {
+  const freq = 440 * Math.pow(2, (midi - 69) / 12);
+
+  const partials = isBass
+    ? [
+        { mult: 1, gain: 1.0 }, { mult: 2, gain: 0.55 },
+        { mult: 3, gain: 0.28 }, { mult: 4, gain: 0.14 },
+        { mult: 5, gain: 0.07 }, { mult: 6, gain: 0.04 },
+      ]
+    : [
+        { mult: 1, gain: 1.0 }, { mult: 2, gain: 0.35 },
+        { mult: 3, gain: 0.14 }, { mult: 4, gain: 0.06 },
+      ];
+
+  const masterEnv = ctx.createGain();
+  masterEnv.connect(pianoGain);
+
+  const attack = isBass ? 0.005 : 0.01;
+  const decay = isBass ? 0.35 : 0.2;
+  const sustainLevel = isBass ? 0.42 : 0.3;
+  const release = isBass ? 0.6 : 0.45;
+  const peak = (isBass ? 0.34 : 0.18) * velocity;
+
+  masterEnv.gain.setValueAtTime(0, when);
+  masterEnv.gain.linearRampToValueAtTime(peak, when + attack);
+  masterEnv.gain.linearRampToValueAtTime(peak * sustainLevel, when + attack + decay);
+  masterEnv.gain.setValueAtTime(peak * sustainLevel, when + duration);
+  masterEnv.gain.exponentialRampToValueAtTime(0.0001, when + duration + release);
+
+  partials.forEach(p => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq * p.mult;
+    osc.detune.value = (Math.random() - 0.5) * 5;
+    const g = ctx.createGain();
+    g.gain.value = p.gain;
+    osc.connect(g); g.connect(masterEnv);
+    osc.start(when); osc.stop(when + duration + release + 0.05);
+  });
+}
+
+function playBass(notes, when, duration, velocity=1) {
+  notes.forEach(n => playPianoNote(n, when, duration, velocity, true));
+}
+function playChordNotes(notes, when, duration, velocity=1) {
+  notes.forEach(n => playPianoNote(n, when, duration, velocity, false));
+}
+
+// ============================================================
+// БАРАБАНЫ
+// ============================================================
+
+// Утилита: создать шумовой буфер
+function noiseBuffer(duration) {
+  const len = Math.floor(ctx.sampleRate * duration);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+// Утилита: humanize — случайное отклонение громкости ±%
+function h(velocity, amount = 0.15) {
+  return velocity * (1 + (Math.random() - 0.5) * 2 * amount);
+}
+
+function playKick(when, velocity=1) {
+  const osc = ctx.createOscillator(); const g = ctx.createGain();
+  osc.frequency.setValueAtTime(155, when);
+  osc.frequency.exponentialRampToValueAtTime(45, when + 0.11);
+  g.gain.setValueAtTime(0.95 * velocity, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.32);
+  osc.connect(g); g.connect(drumGain);
+  osc.start(when); osc.stop(when + 0.35);
+}
+
+// Kick "808" — длинный, низкий
+function playKick808(when, velocity=1) {
+  const osc = ctx.createOscillator(); const g = ctx.createGain();
+  osc.frequency.setValueAtTime(120, when);
+  osc.frequency.exponentialRampToValueAtTime(38, when + 0.25);
+  g.gain.setValueAtTime(1.0 * velocity, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.9);
+  osc.connect(g); g.connect(drumGain);
+  osc.start(when); osc.stop(when + 1);
+}
+
+function playSnare(when, velocity=1) {
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuffer(0.2);
+  const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1100;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.5 * velocity, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.18);
+  noise.connect(hp); hp.connect(g); g.connect(drumGain);
+  noise.start(when); noise.stop(when + 0.2);
+
+  const osc = ctx.createOscillator(); osc.type='triangle'; osc.frequency.value=185;
+  const g2 = ctx.createGain();
+  g2.gain.setValueAtTime(0.22 * velocity, when);
+  g2.gain.exponentialRampToValueAtTime(0.001, when + 0.1);
+  osc.connect(g2); g2.connect(drumGain);
+  osc.start(when); osc.stop(when + 0.12);
+}
+
+// Rim shot — щелчок по ободу
+function playRim(when, velocity=1) {
+  const osc = ctx.createOscillator(); osc.type='square'; osc.frequency.value=1700;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.18 * velocity, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
+  const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1500;
+  osc.connect(hp); hp.connect(g); g.connect(drumGain);
+  osc.start(when); osc.stop(when + 0.06);
+}
+
+function playHat(when, open=false, velocity=1) {
+  const dur = open ? 0.28 : 0.05;
+  const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer(dur + 0.02);
+  const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=7500;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime((open ? 0.3 : 0.22) * velocity, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + dur);
+  noise.connect(hp); hp.connect(g); g.connect(drumGain);
+  noise.start(when); noise.stop(when + dur + 0.03);
+}
+
+// Crash cymbal — акцент
+function playCrash(when, velocity=1) {
+  const dur = 1.4;
+  const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer(dur);
+  const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=4000;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.32 * velocity, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + dur);
+  noise.connect(hp); hp.connect(g); g.connect(drumGain);
+  noise.start(when); noise.stop(when + dur + 0.05);
+}
+
+function playRide(when, velocity=1) {
+  const dur = 0.5;
+  const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer(dur);
+  const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=5000;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.16 * velocity, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + dur);
+  noise.connect(hp); hp.connect(g); g.connect(drumGain);
+  noise.start(when); noise.stop(when + dur + 0.02);
+}
+
+// Shaker — мягкий шум
+function playShaker(when, velocity=1) {
+  const dur = 0.07;
+  const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer(dur);
+  const bp = ctx.createBiquadFilter(); bp.type='bandpass';
+  bp.frequency.value = 6000; bp.Q.value = 2;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(0.15 * velocity, when + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, when + dur);
+  noise.connect(bp); bp.connect(g); g.connect(drumGain);
+  noise.start(when); noise.stop(when + dur + 0.02);
+}
+
+// Clap — аплодисмент
+function playClap(when, velocity=1) {
+  for (let i = 0; i < 3; i++) {
+    const t = when + i * 0.012;
+    const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer(0.1);
+    const bp = ctx.createBiquadFilter(); bp.type='bandpass';
+    bp.frequency.value = 1500; bp.Q.value = 1.5;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.4 * velocity / (i + 1), t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    noise.connect(bp); bp.connect(g); g.connect(drumGain);
+    noise.start(t); noise.stop(t + 0.12);
+  }
+}
+
+// Tom'ы — низкий, средний, высокий
+function playTom(when, freq, velocity=1) {
+  const osc = ctx.createOscillator(); osc.type='sine';
+  osc.frequency.setValueAtTime(freq, when);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.55, when + 0.18);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.6 * velocity, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.28);
+  osc.connect(g); g.connect(drumGain);
+  osc.start(when); osc.stop(when + 0.3);
+}
+function playTomLow(w, v=1)  { playTom(w, 120, v); }
+function playTomMid(w, v=1)  { playTom(w, 180, v); }
+function playTomHigh(w, v=1) { playTom(w, 250, v); }
+
+// ============================================================
+// КАРТА ДОРОЖЕК: имя → функция
+// ============================================================
+const DRUM_MAP = {
+  kick:     playKick,
+  kick808:  playKick808,
+  snare:    playSnare,
+  rim:      playRim,
+  hat:      (w, v) => playHat(w, false, v),
+  openhat:  (w, v) => playHat(w, true, v),
+  crash:    playCrash,
+  ride:     playRide,
+  shaker:   playShaker,
+  clap:     playClap,
+  tomLow:   playTomLow,
+  tomMid:   playTomMid,
+  tomHigh:  playTomHigh,
+};
+
+// ============================================================
+// ПАТТЕРНЫ
+// Каждая дорожка — массив длины steps. 0 = пауза, число = velocity.
+// Значения < 0.6 — ghost notes (тихие), > 1 — акценты.
+// ============================================================
+const PATTERNS = {
+  waltz: {
+    steps: 12, name: 'Вальс',
+    notes: [
+      { bass:1, chord:1 },{},{},
+      { chord:1 },{},{},
+      { chord:1 },{},{},
+    ],
+    drums: {
+      kick:  [1.0,0,0,  0,0,0,  0,0,0.5],
+      snare: [0,0,0,  0.35,0,0,  0.45,0,0],
+      hat:   [0.35,0,0,  0,0,0,  0,0,0],
+    },
+  },
+
+  waltzFast: {
+    steps: 12, name: 'Вальс быстрый',
+    notes: [
+      { bass:1 },{},{},
+      { chord:1 },{},{},
+      { chord:1 },{},{},
+    ],
+    drums: {
+      kick:  [1.0,0,0,  0,0,0,  0,0,0],
+      snare: [0,0,0,  0.35,0,0,  0.35,0,0.4],
+      shaker:[0.3,0,0.4,  0,0.4,0,  0.3,0.4,0],
+    },
+  },
+
+  pop: {
+    steps: 16, name: 'Поп (Тум-па-па-па)',
+    notes: [
+      { bass:1 },{},{},{},
+      { chord:1 },{},{},{},
+      { chord:1 },{},{},{},
+      { chord:1 },{},{},{},
+    ],
+    drums: {
+      kick:  [1.0,0,0,0,  0,0,0,0.4,  1.0,0,0,0,  0,0,0,0],
+      snare: [0,0,0,0,  1.0,0,0.25,0,  0,0,0,0,  1.0,0,0.3,0.6],
+      hat:   [0.7,0,0.5,0.4,  0.6,0,0.5,0.4,  0.7,0,0.5,0.4,  0.6,0,0.5,0.5],
+    },
+  },
+
+  ballad: {
+    steps: 16, name: 'Баллада (Тум... па-па)',
+    notes: [
+      { bass:1 },{},{},{},
+      {},{},{},{},
+      { chord:1 },{},{},{},
+      { chord:1 },{},{},{},
+    ],
+    drums: {
+      kick:   [1.0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0.5],
+      snare:  [0,0,0,0,  0,0,0,0,  0.9,0,0,0,  0.9,0,0,0.6],
+      shaker: [0,0,0.4,0,  0,0,0.4,0,  0,0,0.4,0,  0,0,0.4,0],
+      crash:  [0.9,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0],
+    },
+  },
+
+  arpeggio: {
+    steps: 16, name: 'Арпеджио',
+    notes: [
+      { bass:1 },{},{},{},
+      { chord:1 },{},{ chord:1 },{},
+      { bass:1 },{},{},{},
+      { chord:1 },{},{ chord:1 },{},
+    ],
+    chordNoteIdx: [null,null,null,null, 1,null,2,null, null,null,null,null, 1,null,2,null],
+    drums: {
+      kick:  [1.0,0,0,0,  0,0,0.4,0,  1.0,0,0,0,  0,0,0.4,0],
+      snare: [0,0,0,0,  0.7,0,0,0,  0,0,0,0,  0.7,0,0.3,0.5],
+      hat:   [0.4,0,0.5,0,  0.4,0,0.5,0,  0.4,0,0.5,0,  0.4,0,0.5,0.6],
+    },
+  },
+
+  march: {
+    steps: 16, name: 'Марш',
+    notes: [
+      { bass:1 },{},{},{},
+      { chord:1 },{},{},{},
+      { bass:1 },{},{},{},
+      { chord:1 },{},{},{},
+    ],
+    drums: {
+      kick:   [1.0,0,0,0,  0,0,0,0,  1.0,0,0,0,  0,0,0,0],
+      snare:  [0.4,0,0.5,0,  0.9,0,0.5,0,  0.4,0,0.5,0,  0.9,0,0.6,0.7],
+      rim:    [0,0.3,0,0,  0,0.3,0,0,  0,0.3,0,0,  0,0.3,0,0],
+      crash:  [0.8,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0],
+    },
+  },
+
+  bossa: {
+    steps: 16, name: 'Боссанова',
+    notes: [
+      { bass:1 },{},{},{},
+      { chord:1 },{},{},{ chord:1 },
+      { bass:1 },{},{},{},
+      {},{ chord:1 },{},{},
+    ],
+    drums: {
+      kick:   [1.0,0,0,0,  0,0,0.45,0,  1.0,0,0,0,  0,0,0.45,0],
+      rim:    [0,0,0.5,0,  0,0.5,0,0.6,  0,0,0.5,0,  0,0.5,0,0.6],
+      shaker: [0.35,0.25,0.4,0.25,  0.35,0.25,0.4,0.25,
+               0.35,0.25,0.4,0.25,  0.35,0.25,0.4,0.3],
+    },
+  },
+
+  rock: {
+    steps: 16, name: 'Рок',
+    notes: [
+      { bass:1 },{},{ chord:1 },{},
+      { bass:1 },{},{ chord:1 },{},
+      { bass:1 },{},{ chord:1 },{},
+      { bass:1 },{},{ chord:1 },{},
+    ],
+    drums: {
+      kick:  [1.0,0,0,0,  0,0,0.6,0,  1.0,0,0,0,  0,0,0.6,0],
+      snare: [0,0,0,0,  1.0,0,0,0,  0,0,0,0,  1.0,0,0.4,0.8],
+      hat:   [0.8,0.5,0.7,0.5,  0.8,0.5,0.7,0.5,  0.8,0.5,0.7,0.5,  0.8,0.5,0.7,0.6],
+    },
+  },
+};
+
+let currentPattern = PATTERNS.pop;
+
+// ============================================================
+// UI: АККОРДЫ
+// ============================================================
+const chordGrid = document.getElementById('chordGrid');
+const currentKeyLabel = document.getElementById('currentKeyLabel');
+const keySelect = document.getElementById('keySelect');
+const chordTypeSelect = document.getElementById('chordTypeSelect');
+const bassModeSelect = document.getElementById('bassModeSelect');
+
+function renderChords() {
+  chords = buildChordsForKey(currentKey);
+  applyBassMode();
+
+  chordGrid.innerHTML = '';
+  chords.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'chord-btn';
+    btn.dataset.index = i;
+    btn.innerHTML = `${c.label}<span class="deg">${c.degree}</span><span class="bass-note">бас: ${c.bassLabel}</span>`;
+    btn.onclick = () => {
+      const t = ctx.currentTime;
+      playBass(c.bass, t, 0.9, 1);
+      playChordNotes(c.chord, t + 0.02, 0.85, 1);
+      flashButton(btn);
+      progression[currentProgressionSlot] = i;
+      renderProgression();
+      currentProgressionSlot = (currentProgressionSlot + 1) % 8;
+    };
+    chordGrid.appendChild(btn);
+  });
+  currentKeyLabel.textContent = currentKey + (chordTypeMode === 'seventh' ? ' (7th)' : '');
+}
+
+function flashButton(btn) {
+  btn.classList.add('active');
+  setTimeout(() => btn.classList.remove('active'), 200);
+}
+
+keySelect.addEventListener('change', e => {
+  currentKey = e.target.value;
+  renderChords();
+});
+chordTypeSelect.addEventListener('change', e => {
+  chordTypeMode = e.target.value;
+  renderChords();
+  renderProgression();
+});
+bassModeSelect.addEventListener('change', e => {
+  bassMode = e.target.value;
+  renderChords();
+  renderProgression();
+});
+
+// ============================================================
+// UI: ПРОГРЕССИЯ
+// ============================================================
+const progressionEl = document.getElementById('progression');
+
+function renderProgression() {
+  progressionEl.innerHTML = '';
+  progression.forEach((idx, slot) => {
+    const div = document.createElement('div');
+    div.style.cssText = `
+      padding: 12px 8px;
+      border-radius: 10px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border: 2px solid ${slot === currentProgressionSlot ? '#8ab4f8' : 'rgba(255,255,255,0.1)'};
+      background: ${idx !== null ? 'linear-gradient(180deg,#2c3e60,#1e2a47)' : 'rgba(255,255,255,0.04)'};
+      color: ${idx !== null ? '#eaeaea' : '#4a5568'};
+      transition: all 0.15s;
+      user-select: none;
+    `;
+    div.textContent = idx !== null && chords[idx] ? chords[idx].label : '—';
+    div.onclick = () => {
+      progression[slot] = idx !== null ? null : 0;
+      renderProgression();
+    };
+    progressionEl.appendChild(div);
+  });
+}
+
+// ============================================================
+// UI: ВИЗУАЛИЗАЦИЯ ПАТТЕРНА
+// ============================================================
+const patternVis = document.getElementById('patternVis');
+const rhythmSelect = document.getElementById('rhythmSelect');
+const drumsModeSelect = document.getElementById('drumsMode');
+
+function renderPatternVis() {
+  patternVis.innerHTML = '';
+  const p = currentPattern;
+  const totalSteps = p.steps || 16;
+  for (let i = 0; i < totalSteps; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'beat-dot';
+    dot.dataset.step = i;
+    const n = p.notes[i] || {};
+    if (n.bass) dot.classList.add('bass');
+    if (n.chord) dot.classList.add('chord');
+    dot.textContent = n.bass && n.chord ? 'ТУМ' : n.bass ? 'бас' : n.chord ? 'па' : '';
+    patternVis.appendChild(dot);
+  }
+}
+rhythmSelect.addEventListener('change', e => {
+  currentPattern = PATTERNS[e.target.value];
+  renderPatternVis();
+});
+
+// ============================================================
+// СЕКВЕНСОР
+// ============================================================
+function secondsPerStep() { return (60 / bpm) / 4; }
+
+function buildWalkingBass(fromMidi, toMidi, beatsPerBar) {
+  const notes = [];
+  const dir = toMidi >= fromMidi ? 1 : -1;
+  const dist = Math.abs(toMidi - fromMidi);
+  for (let i = 0; i < beatsPerBar; i++) {
+    if (i === 0) notes.push(fromMidi);
+    else if (i === beatsPerBar - 1) notes.push(toMidi);
+    else {
+      const frac = i / (beatsPerBar - 1);
+      notes.push(Math.round(fromMidi + dir * dist * frac));
+    }
+  }
+  return notes;
+}
+
+function scheduleStep(step, time) {
+  const p = currentPattern;
+  const stepNotes = p.notes[step] || {};
+  const stepsPerBar = p.steps;
+  const barIndex = Math.floor(currentBarCounter);
+  const slotIdx = barIndex % 8;
+  const chordIdx = progression[slotIdx];
+
+  if (chordIdx !== null && chords[chordIdx]) {
+    const c = chords[chordIdx];
+    const spb = secondsPerStep();
+
+    if (stepNotes.bass) {
+      const dur = p.name.includes('Вальс') ? spb * 3 : spb * 3.5;
+      playBass(c.bass, time, dur, 1);
+    }
+
+    if (bassMode === 'walking' && stepsPerBar === 16) {
+      if (step % 4 === 0) {
+        const quarterIdx = step / 4;
+        const nextSlotIdx = (slotIdx + 1) % 8;
+        const nextChordIdx = progression[nextSlotIdx];
+        const nextChord = nextChordIdx !== null ? chords[nextChordIdx] : c;
+        const targetBass = nextChord.bassRoot;
+        const walk = buildWalkingBass(c.bassRoot, targetBass, 4);
+        const note = walk[quarterIdx];
+        playBass([note], time, spb * 3, 0.9);
+      }
+    }
+
+    if (stepNotes.chord) {
+      if (p.chordNoteIdx) {
+        const noteIdx = p.chordNoteIdx[step];
+        if (noteIdx !== null && c.chord[noteIdx] !== undefined) {
+          playChordNotes([c.chord[noteIdx]], time, spb * 1.5, 0.9);
+        }
+      } else {
+        playChordNotes(c.chord, time, spb * 2, 0.85);
+      }
+    }
+  }
+
+  // === Барабаны ===
+  const dm = drumsModeSelect.value;
+  if (dm !== 'off' && p.drums) {
+    const allowedTracks = dm === 'basic'
+      ? ['kick', 'kick808', 'snare']
+      : Object.keys(p.drums);
+
+    for (const trackName of allowedTracks) {
+      const pattern = p.drums[trackName];
+      if (!pattern) continue;
+      const vel = pattern[step];
+      if (!vel) continue;
+      const fn = DRUM_MAP[trackName];
+      if (fn) fn(time, h(vel, 0.12));
+    }
+  }
+}
+
+function scheduler() {
+  while (nextNoteTime < ctx.currentTime + SCHEDULE_AHEAD) {
+    if (stepInBarCounter >= currentPattern.steps) {
+      stepInBarCounter = 0;
+      currentBarCounter++;
+    }
+    scheduleStep(stepInBarCounter, nextNoteTime);
+    highlightBeat(stepInBarCounter);
+    nextNoteTime += secondsPerStep();
+    stepInBarCounter++;
+  }
+}
+
+function highlightBeat(step) {
+  document.querySelectorAll('.beat-dot').forEach(el => {
+    el.classList.toggle('playing', parseInt(el.dataset.step) === step);
+  });
+}
+
+// ============================================================
+// ГЕНЕРАТОР ПРОГРЕССИЙ
+// ============================================================
+const GENRE_PROGRESSIONS = {
+  pop: [
+    [0, 4, 5, 3],
+    [5, 3, 0, 4],
+    [0, 5, 3, 4],
+    [0, 3, 4, 5],
+  ],
+  jazz: [
+    [1, 4, 0, 0],
+    [1, 4, 2, 5],
+    [0, 5, 1, 4],
+    [3, 3, 0, 0],
+  ],
+  blues: [
+    [0, 3, 0, 4],
+    [0, 0, 3, 3],
+    [0, 4, 0, 4],
+  ],
+  ballad: [
+    [0, 5, 3, 4],
+    [0, 3, 1, 4],
+    [5, 3, 0, 4],
+  ],
+  rock: [
+    [0, 3, 4, 0],
+    [0, 6, 3, 0],
+    [0, 4, 5, 3],
+    [5, 3, 0, 4],
+  ],
+  folk: [
+    [0, 3, 0, 4],
+    [0, 4, 0, 0],
+    [0, 3, 4, 0],
+  ],
+};
+
+const genreSelect = document.getElementById('genreSelect');
+const genBtn = document.getElementById('genBtn');
+
+genBtn.addEventListener('click', () => {
+  const genre = genreSelect.value;
+  const options = GENRE_PROGRESSIONS[genre];
+  const chosen = options[Math.floor(Math.random() * options.length)];
+  progression = [null, null, null, null, null, null, null, null];
+  chosen.forEach((chordIdx, i) => {
+    progression[i] = chordIdx;
+  });
+  currentProgressionSlot = chosen.length % 8;
+  renderProgression();
+});
+
+// ============================================================
+// ТРАНСПОРТ
+// ============================================================
+const playBtn = document.getElementById('playBtn');
+const stopBtn = document.getElementById('stopBtn');
+const clearProgBtn = document.getElementById('clearProg');
+
+playBtn.addEventListener('click', async () => {
+  if (ctx.state === 'suspended') await ctx.resume();
+  if (isPlaying) return;
+  isPlaying = true;
+  playBtn.classList.add('playing');
+  playBtn.textContent = '⏸ PLAYING';
+  stepInBarCounter = 0;
+  currentBarCounter = 0;
+  nextNoteTime = ctx.currentTime + 0.05;
+  schedulerTimer = setInterval(scheduler, LOOKAHEAD);
+});
+
+function stop() {
+  isPlaying = false;
+  playBtn.classList.remove('playing');
+  playBtn.textContent = '▶ PLAY';
+  if (schedulerTimer) clearInterval(schedulerTimer);
+  schedulerTimer = null;
+  stepInBarCounter = 0;
+  currentBarCounter = 0;
+  document.querySelectorAll('.beat-dot.playing').forEach(el => el.classList.remove('playing'));
+}
+stopBtn.addEventListener('click', stop);
+clearProgBtn.addEventListener('click', () => {
+  progression = [null, null, null, null, null, null, null, null];
+  currentProgressionSlot = 0;
+  renderProgression();
+});
+
+// ============================================================
+// ПАРАМЕТРЫ
+// ============================================================
+const bpmSlider = document.getElementById('bpm');
+const bpmVal = document.getElementById('bpmVal');
+bpmSlider.addEventListener('input', e => {
+  bpm = parseInt(e.target.value);
+  bpmVal.textContent = bpm;
+});
+
+const pianoVolSlider = document.getElementById('pianoVol');
+const pianoVolVal = document.getElementById('pianoVolVal');
+pianoVolSlider.addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  pianoGain.gain.setTargetAtTime(v / 100, ctx.currentTime, 0.02);
+  pianoVolVal.textContent = v + '%';
+});
+
+const drumVolSlider = document.getElementById('drumVol');
+const drumVolVal = document.getElementById('drumVolVal');
+drumVolSlider.addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  drumGain.gain.setTargetAtTime(v / 100, ctx.currentTime, 0.02);
+  drumVolVal.textContent = v + '%';
+});
+
+// ============================================================
+// КЛАВИАТУРА
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (isPlaying) stop();
+    else playBtn.click();
+    return;
+  }
+  const n = parseInt(e.key);
+  if (n >= 1 && n <= 7) {
+    const idx = n - 1;
+    if (chords[idx]) {
+      const c = chords[idx];
+      const t = ctx.currentTime;
+      playBass(c.bass, t, 0.9, 1);
+      playChordNotes(c.chord, t + 0.02, 0.85, 1);
+      const btn = chordGrid.children[idx];
+      if (btn) flashButton(btn);
+      progression[currentProgressionSlot] = idx;
+      renderProgression();
+      currentProgressionSlot = (currentProgressionSlot + 1) % 8;
+    }
+  }
+});
+
+// ============================================================
+// СТАРТ
+// ============================================================
+renderChords();
+renderProgression();
+renderPatternVis();
+</script>
+</body>
+</html>
